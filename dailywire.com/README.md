@@ -11,3 +11,8 @@ This may be included in your Newsboat URLs file with the following line (assumin
 ```shell
 exec:dailywire.com "~The Daily Wire"
 ```
+
+## Limitations
+
+* This *will not* follow Newsboat's proxy settings.
+* The user agent is currently hard-coded.

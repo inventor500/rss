@@ -11,3 +11,7 @@ dailywire.com
 murfs
 murfs.exe
 
+# Compiler stuff
+*.o
+*.fasl
+

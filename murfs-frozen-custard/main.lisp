@@ -13,7 +13,6 @@
 		""
 		(subseq str position))))
 
-
 (defun get-children-of-class (element class &key tag-name)
   "Get all children matching the given class. This function is not recursive."
   (loop for child across (plump:children element)
@@ -95,6 +94,12 @@
 		(plump:make-fulltext-element feed "link" :attributes (make-attribute-map `(("href" . ,link-other)))))
 	  (values root feed))))
 
+(defun get-current-timestamp ()
+  "Get the current timestamp. This exists because LOCAL-TIME:TODAY keeps returning the wrong day."
+  ;; (LOCAL-TIME:TODAY) and (local-time:clock-today local-time:*clock*)
+  ;; returned @2024-03-23T19:00:00.000000-05:00 when run on 2024-03-24T17:49UTC-5
+  (local-time:clock-now local-time:*clock*))
+
 (declaim (ftype (function (string) fixnum) short-day-name-to-int))
 (defun short-day-name-to-int (name)
   "Convert the short name of a day to an int (e.g. \"Mon\" -> 1"
@@ -103,12 +108,19 @@
 (declaim (ftype (function (&optional t) string) get-timestamp))
 (defun get-timestamp (&optional day)
   "Generate the timestamp. Day is the next weekday in shortened form."
-  (if (eq nil day)
-	  (local-time:to-rfc3339-timestring (local-time:today))
-	  (let ((day-of-week (local-time:timestamp-day-of-week (local-time:today))))
-		(local-time:to-rfc3339-timestring
-		 ;; (car (multiple-value-list)) limits the return to only one value
-		 (car (multiple-value-list (local-time:timestamp+ (local-time:today) (abs (- day-of-week (short-day-name-to-int day))) :day)))))))
+  (let ((current-timestamp (get-current-timestamp)))
+	(if (eq nil day)
+		(local-time:to-rfc3339-timestring current-timestamp)
+		(let ((day-of-week (local-time:timestamp-day-of-week current-timestamp)))
+		  (local-time:to-rfc3339-timestring
+		   ;; (car (multiple-value-list)) limits the return to only one value
+		   (car (multiple-value-list (local-time:timestamp+
+									  current-timestamp
+									  (let ((offset (mod (+ day-of-week (short-day-name-to-int day)) 7)))
+										(if (eql offset 0)
+											7
+											offset))
+									  :day))))))))
 
 (declaim (ftype (function (list) string) make-id))
 (defun make-id (item)

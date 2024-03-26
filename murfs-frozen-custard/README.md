@@ -11,3 +11,7 @@ make
 
 This can be `exec`-ed by Newsboat, or used independently to generate a file.  
 The website this scrapes is only updated about once a week.
+
+## Limitations
+
+The generated dates are very broken.

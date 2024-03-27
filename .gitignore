@@ -4,12 +4,16 @@
 *\#
 .*swp*
 
+*.exe
+
 # Daily Wire
-dailywire.com
+dailywire.com/dailywire.com
 
 # Murfs
 murfs
-murfs.exe
+
+# Morning Wire
+morning-wire/morning-wire
 
 # Compiler stuff
 *.o

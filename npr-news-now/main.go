@@ -7,7 +7,7 @@ import (
 	rss "github.com/inventor500/rss/podcast-feed-regex"
 )
 
-const Url = "https://feeds.simplecast.com/WCb5SgYj"
+const Url = "https://feeds.npr.org/500005/podcast.xml"
 
 func main() {
 	os.Exit(rss.MainFunction(Url, makeRegex()))
@@ -16,11 +16,11 @@ func main() {
 func makeRegex() []rss.Replacement {
 	regex := make([]rss.Replacement, 2)
 	regex[0] = rss.Replacement{
-		Regex:       regexp.MustCompile(`dts\.podtrac\.com/.*/injector\.simplecastaudio\.com`),
-		Replacement: "injector.simplecastaudio.com",
+		Regex:       regexp.MustCompile(`chrt\.fm/.*ondemand\.npr\.org`),
+		Replacement: "onedemand.npr.org",
 	}
 	regex[1] = rss.Replacement{
-		Regex:       regexp.MustCompile(`\?aid=rss_feed.*"`),
+		Regex:       regexp.MustCompile(`\?p=.*"`),
 		Replacement: "\"",
 	}
 	return regex

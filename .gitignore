@@ -15,6 +15,9 @@ murfs
 # Morning Wire
 morning-wire/morning-wire
 
+# NPR News
+npr-news-now/npr-news-now
+
 # Compiler stuff
 *.o
 *.fasl

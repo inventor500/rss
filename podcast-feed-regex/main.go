@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-const UserAgent = "Mozilla/5.0 (Windows NT 10.0; rv:123.0) Gecko/20100101 Firefox/123.0"
+const UserAgent = "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0"
 
 type Replacement struct {
 	Regex       *regexp.Regexp

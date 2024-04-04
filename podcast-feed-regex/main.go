@@ -8,7 +8,8 @@ import (
 	"regexp"
 )
 
-const UserAgent = "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0"
+// Can be overriden by setting the RSS_USER_AGENT environment variable
+const DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0"
 
 type Replacement struct {
 	Regex       *regexp.Regexp
@@ -48,7 +49,11 @@ func downloadFeed(url string) (string, error) {
 }
 
 func addHeaders(req *http.Request) {
-	req.Header.Set("User-Agent", UserAgent)
+	userAgent := os.Getenv("RSS_USER_AGENT")
+	if userAgent == "" {
+		userAgent = DefaultUserAgent
+	}
+	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("DNT", "1")
 	req.Header.Set("Sec-GPC", "1")
 	req.Header.Set("Pragma", "no-cache")

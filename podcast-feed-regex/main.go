@@ -29,6 +29,20 @@ func MainFunction(url string, regex []Replacement) int {
 	return 0
 }
 
+func MakeRegex(regexTuples [][]string) []Replacement {
+	replacements := make([]Replacement, len(regexTuples))
+	for i := 0; i < len(regexTuples); i++ {
+		if len(regexTuples[i]) != 2 {
+			panic("regex tuples must be exactly two strings each")
+		}
+		replacements[i] = Replacement{
+			Regex:       regexp.MustCompile(regexTuples[i][0]),
+			Replacement: regexTuples[i][1],
+		}
+	}
+	return replacements
+}
+
 func downloadFeed(url string) (string, error) {
 	client := http.Client{}
 	req, _ := http.NewRequest("GET", url, nil)

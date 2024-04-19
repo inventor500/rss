@@ -1,6 +1,6 @@
-go 1.22.1
+go 1.22.2
 
-use ./dailywire.com
 use ./morning-wire
 use ./podcast-feed-regex
 use ./npr-news-now
+use ./simulate-browser

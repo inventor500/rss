@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 // This user agent is used if the RSS_USER_AGENT environment variable is not set.
@@ -55,7 +56,9 @@ func AddHeaders(url, userAgent string, req *http.Request) {
 // Download the file.
 // addHeaders: Allows using a custom function to add readers
 func DownloadFile(url, userAgent string, addHeaders func(string, string, *http.Request)) (string, error) {
-	client := http.Client{}
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
 	req, _ := http.NewRequest("GET", url, nil)
 	addHeaders(url, userAgent, req)
 	res, err := client.Do(req)

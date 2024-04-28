@@ -45,7 +45,7 @@ func MainFunc() int {
 }
 
 func parseArguments() (*arguments, error) {
-	timeout := flag.Int("timeout", 10, "Timeout for requests")
+	timeout := flag.Int("timeout", 10, "Timeout in seconds for requests")
 	useRegex := flag.Bool("regex", false, "Enable use of regular expressions for post-processing")
 	if len(os.Args) < 2 {
 		return nil, errors.New("no arguments provided")

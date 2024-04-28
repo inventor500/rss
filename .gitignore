@@ -4,11 +4,6 @@
 *\#
 .*swp*
 
-*.exe
-
-# Daily Wire
-dailywire.com/dailywire.com
-
 # Murfs
 murfs
 
@@ -21,4 +16,4 @@ simulate-browser/cmd/simulate-browser/simulate-browser
 # Compiler stuff
 *.o
 *.fasl
-
+*.exe

@@ -9,7 +9,9 @@ import (
 )
 
 /** Download the file.
- * addHeaders: The function invoked to add headers to the request
+ * url: The url to download
+ * timeout: Timeout (in seconds). 0 disables the timeout.
+ * userAgent: The user agent to use wen downloading
  */
 func DownloadFile(url string, timeout int, userAgent string) (string, error) {
 	client := http.Client{
@@ -39,6 +41,7 @@ func DownloadFile(url string, timeout int, userAgent string) (string, error) {
 /** Add headers to the request.
  * url: Used for the Referer header
  * userAgent: The user agent string
+ * req: The request to add headers to. The request itself is modified, not a copy.
  */
 func addHeaders(url, userAgent string, req *http.Request) {
 	req.Header.Set("User-Agent", userAgent)
@@ -52,8 +55,8 @@ func addHeaders(url, userAgent string, req *http.Request) {
 	req.Header.Set("Sec-Fetch-Mode", "navigate")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("Sec-Fetch-User", "?1")
-	req.Header.Set("DNT", "1")
-	req.Header.Set("Sec-GPC", "1")
+	req.Header.Set("DNT", "1")     // Do Not Track
+	req.Header.Set("Sec-GPC", "1") // Global Privacy Control
 	req.Header.Set("TE", "Trailers")
 }
 

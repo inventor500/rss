@@ -12,6 +12,8 @@ Environment variables:
 - `RSS_USER_AGENT`: The user agent. Defaults to a user agent string taken from Firefox ESR.
 
 Parameters:
+- `timeout`: The time to wait for a response (in seconds). Defaults to 10 seconds.
+- `regex`: Enables the use of find/replace functionality. If this flag is enabled, regular expressions should alternate with their replacements before the URL, e.g. `expression1 replacement1 expression2 replacement2 https://example.com`.
 - The URL to download.
 
 Example usage:

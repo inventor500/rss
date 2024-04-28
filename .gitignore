@@ -19,7 +19,7 @@ morning-wire/morning-wire
 npr-news-now/npr-news-now
 
 # Simulate Browser
-simulate-browser/simulate-browser
+simulate-browser/cmd/simulate-browser/simulate-browser
 
 # Compiler stuff
 *.o

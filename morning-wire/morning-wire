@@ -1,0 +1,3 @@
+#! /usr/bin/sh
+
+simulate-browser -regex "dts\\.podtrac\\.com/.*/injector\\.simplecastaudio\\.com" "injector.simplecastaudio.com" "\\?aid=rss_feed.*" '"' https://feeds.simplecast.com/WCb5SgYj

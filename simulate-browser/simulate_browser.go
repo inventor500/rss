@@ -57,7 +57,6 @@ func addHeaders(url, userAgent string, req *http.Request) {
 	req.Header.Set("Sec-Fetch-User", "?1")
 	req.Header.Set("DNT", "1")     // Do Not Track
 	req.Header.Set("Sec-GPC", "1") // Global Privacy Control
-	req.Header.Set("TE", "Trailers")
 }
 
 // Decompress the downloaded file.

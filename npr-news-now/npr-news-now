@@ -1,3 +1,4 @@
 #! /usr/bin/sh
 
-/usr/bin/env GODEBUG=http2client=0 simulate-browser -timeout 10 -regex 'chrt\.fm/.*ondemand\.npr\.org' onedemand.npr.org 'chrt\.fm/.*/traffic\.megaphone\.fm' traffic.megaphone.fm '\?p=.*"' '"' https://feeds.npr.org/500005/podcast.xml
+simulate-browser -timeout 10 -regex 'chrt\.fm/.*ondemand\.npr\.org' onedemand.npr.org 'chrt\.fm/.*/traffic\.megaphone\.fm' traffic.megaphone.fm '\?p=.*"' '"' https://feeds.npr.org/500005/podcast.xml
+

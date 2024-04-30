@@ -16,10 +16,12 @@ func TestDownloadFile(t *testing.T) {
 	t.Run("Headers", func(t *testing.T) {
 		const path = "/test-path"
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			io.WriteString(w, response)
 			// Not much point in testing everything, since these might be changed
 			if r.URL.Path != path {
 				t.Errorf("Expected path %s, received %s", path, r.URL.Path)
+			}
+			if r.Header.Get("Accept-Encoding") != "gzip" {
+				t.Errorf("Expected Accept-Encoding 'gzip', received %s", r.Header.Get("Accept-Encoding"))
 			}
 			if r.Header.Get("User-Agent") != userAgent {
 				t.Errorf("Expected user-agent %s, received %s", userAgent, r.Header.Get("User-Agent"))
@@ -30,6 +32,7 @@ func TestDownloadFile(t *testing.T) {
 			if r.Header.Get("Sec-GPC") != "1" {
 				t.Errorf("Expected Sec-GPC value 1, recieved %s", r.Header.Get("Sec-GPC"))
 			}
+			io.WriteString(w, response)
 		}))
 		defer server.Close()
 		_, err := sim.DownloadFile(server.URL+path, 0, userAgent)

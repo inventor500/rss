@@ -1,7 +1,6 @@
 package simulate_browser
 
 import (
-	"fmt"
 	"regexp"
 )
 
@@ -15,7 +14,6 @@ type FindReplace struct {
 func ApplyRegex(regexList []FindReplace, text string) string {
 	for i := 0; i < len(regexList); i++ {
 		text = regexList[i].Find.ReplaceAllString(text, regexList[i].Replace)
-		fmt.Println(text)
 	}
 	return text
 }

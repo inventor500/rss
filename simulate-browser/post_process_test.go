@@ -15,7 +15,7 @@ func TestApplyRegex(t *testing.T) {
 			Find:    regexp.MustCompile("html"),
 			Replace: "lmth",
 		}}
-		if result := sim.ApplyRegex(regex, startString); result != replacedString {
+		if result := sim.ApplyRegex(regex, startString, false); result != replacedString {
 			t.Errorf("Expected %s, received %s", replacedString, result)
 		}
 	})
@@ -30,7 +30,7 @@ func TestApplyRegex(t *testing.T) {
 				Replace: "html",
 			},
 		}
-		if result := sim.ApplyRegex(regex, startString); result != startString {
+		if result := sim.ApplyRegex(regex, startString, false); result != startString {
 			t.Errorf("Expected %s, received %s", startString, result)
 		}
 	})

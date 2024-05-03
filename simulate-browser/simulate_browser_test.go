@@ -2,6 +2,7 @@ package simulate_browser_test
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -35,7 +36,7 @@ func TestDownloadFile(t *testing.T) {
 			io.WriteString(w, response)
 		}))
 		defer server.Close()
-		_, err := sim.DownloadFile(server.URL+path, 0, userAgent)
+		_, err := sim.DownloadFile(server.URL+path, 0, userAgent, false)
 		if err != nil {
 			t.Errorf("Received error %s", err)
 		}
@@ -46,7 +47,7 @@ func TestDownloadFile(t *testing.T) {
 			io.WriteString(w, response)
 		}))
 		defer server.Close()
-		res, err := sim.DownloadFile(server.URL, 0, userAgent)
+		res, err := sim.DownloadFile(server.URL, 0, userAgent, false)
 		if err != nil {
 			t.Errorf("Received error %s", err)
 		}
@@ -64,12 +65,23 @@ func TestDownloadFile(t *testing.T) {
 			writer.Close()
 		}))
 		defer server.Close()
-		res, err := sim.DownloadFile(server.URL, 0, userAgent)
+		res, err := sim.DownloadFile(server.URL, 0, userAgent, false)
 		if err != nil {
 			t.Errorf("Received an error: %s", err)
 		}
 		if res != response {
 			t.Errorf("Expected response %s, received %s", response, res)
+		}
+	})
+	t.Run("Invalid Error Code", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.NotFound(w, r)
+		}))
+		defer server.Close()
+		_, err := sim.DownloadFile(server.URL, 0, userAgent, false)
+		expected := "received status code 404"
+		if err == nil || fmt.Sprintf("%s", err) != expected {
+			t.Errorf("Expected error to be %s, got %s", expected, err)
 		}
 	})
 }

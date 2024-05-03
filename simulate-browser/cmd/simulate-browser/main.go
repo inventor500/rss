@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 
@@ -17,6 +18,7 @@ type arguments struct {
 	Timeout      int
 	Replacements []sim.FindReplace
 	Url          string
+	Verbose      bool
 }
 
 // The main function. Returns 0 if successful, 1 otherwise.
@@ -27,26 +29,34 @@ func MainFunc() int {
 		flag.PrintDefaults()
 		return 1
 	}
+	if args.Verbose {
+		initializeLogger()
+	}
 	userAgent := os.Getenv("RSS_USER_AGENT")
 	if userAgent == "" {
 		userAgent = DefaultUserAgent
 	}
-	result, err := sim.DownloadFile(args.Url, args.Timeout, userAgent)
+	result, err := sim.DownloadFile(args.Url, args.Timeout, userAgent, args.Verbose)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to download: %s\n", err)
 		return 1
 	}
 	if args.Replacements != nil {
-		fmt.Println(sim.ApplyRegex(args.Replacements, result))
+		fmt.Println(sim.ApplyRegex(args.Replacements, result, args.Verbose))
 	} else {
 		fmt.Println(result)
 	}
 	return 0
 }
 
+func initializeLogger() {
+	log.SetPrefix("")
+}
+
 func parseArguments() (*arguments, error) {
 	timeout := flag.Int("timeout", 10, "Timeout in seconds for requests")
 	useRegex := flag.Bool("regex", false, "Enable use of regular expressions for post-processing")
+	verbose := flag.Bool("v", false, "Verbose mode")
 	if len(os.Args) < 2 {
 		return nil, errors.New("no arguments provided")
 	}
@@ -69,12 +79,14 @@ func parseArguments() (*arguments, error) {
 				Timeout:      *timeout,
 				Url:          flag.Arg(len(args) - 1),
 				Replacements: findList,
+				Verbose:      *verbose,
 			}, nil
 		}
 	} else {
 		return &arguments{
 			Timeout: *timeout,
 			Url:     flag.Arg(0),
+			Verbose: *verbose,
 		}, nil
 	}
 }

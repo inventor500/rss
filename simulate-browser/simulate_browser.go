@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -13,12 +14,14 @@ import (
  * timeout: Timeout (in seconds). 0 disables the timeout.
  * userAgent: The user agent to use wen downloading
  */
-func DownloadFile(url string, timeout int, userAgent string) (string, error) {
+func DownloadFile(url string, timeout int, userAgent string, verbose bool) (string, error) {
+	logs := log.Default()
 	client := http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
 	}
 	req, _ := http.NewRequest("GET", url, nil)
 	addHeaders(url, userAgent, req)
+	logs.Printf("Sending GET request to %s...\n", url)
 	res, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -28,8 +31,10 @@ func DownloadFile(url string, timeout int, userAgent string) (string, error) {
 		return "", fmt.Errorf("received status code %d", res.StatusCode)
 	}
 	if res.Header.Get("Content-Encoding") == "gzip" {
+		logs.Println("Received gzip compressed response")
 		return decompress(res.Body)
 	} else {
+		logs.Println("Received uncompressed response")
 		b, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", err

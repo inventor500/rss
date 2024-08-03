@@ -21,7 +21,9 @@ func DownloadFile(url string, timeout int, userAgent string, verbose bool) (stri
 	}
 	req, _ := http.NewRequest("GET", url, nil)
 	addHeaders(url, userAgent, req)
-	logs.Printf("Sending GET request to %s...\n", url)
+	if verbose {
+		logs.Printf("Sending GET request to %s...\n", url)
+	}
 	res, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -31,10 +33,14 @@ func DownloadFile(url string, timeout int, userAgent string, verbose bool) (stri
 		return "", fmt.Errorf("received status code %d", res.StatusCode)
 	}
 	if res.Header.Get("Content-Encoding") == "gzip" {
-		logs.Println("Received gzip compressed response")
+		if verbose {
+			logs.Println("Received gzip compressed response")
+		}
 		return decompress(res.Body)
 	} else {
-		logs.Println("Received uncompressed response")
+		if verbose {
+			logs.Println("Received uncompressed response")
+		}
 		b, err := io.ReadAll(res.Body)
 		if err != nil {
 			return "", err

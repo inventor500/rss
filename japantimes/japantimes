@@ -1,0 +1,3 @@
+#! /bin/sh
+simulate-browser https://www.japantimes.co.jp/feed/
+

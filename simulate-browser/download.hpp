@@ -4,7 +4,7 @@
 #include <curl/curl.h>
 #include <iostream>
 
-const std::string default_user_agent = "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/115.0";
+const std::string default_user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0";
 
 class Downloader {
 public:
@@ -13,6 +13,7 @@ public:
 	const std::optional<std::string> socks_hostname{};
 	const bool verbose = false;
 	std::ostream& verbose_output = std::cerr; // For testing
+	// This SHOULD NOT be considered thread safe
 	[[nodiscard]] std::string download(const std::string& url) const;
 	Downloader() {}
 	Downloader(const std::string &user_agent, const std::string& socks_hostname) :

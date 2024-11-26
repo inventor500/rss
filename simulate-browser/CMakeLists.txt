@@ -19,3 +19,8 @@ target_sources(simulate-browser
   ${CMAKE_SOURCE_DIR}/main.cpp
 )
 target_link_libraries(simulate-browser post_process download)
+
+add_executable(simulate-browser_test test_simulate_browser.cpp)
+target_link_libraries(simulate-browser_test PUBLIC gtest post_process download)
+add_test(NAME MainTest COMMAND simulate-browser_test)
+enable_testing()

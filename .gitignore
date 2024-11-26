@@ -14,3 +14,4 @@ simulate-browser/cmd/simulate-browser/simulate-browser
 *.o
 *.fasl
 *.exe
+build

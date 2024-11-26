@@ -75,6 +75,8 @@ private:
 	CURLcode res;
 	std::string result;
 	curl_easy_setopt(hnd, CURLOPT_WRITEDATA, &result);
+	// Follow redirects
+	curl_easy_setopt(hnd, CURLOPT_FOLLOWLOCATION, true);
 	res = curl_easy_perform(hnd);
 	long http_code;
 	curl_easy_getinfo(hnd, CURLINFO_RESPONSE_CODE, &http_code);
@@ -83,7 +85,7 @@ private:
 		// Not the verbose output stream
 		std::cerr << "Unable to download: ";
 		if (http_code != 200) {
-			std::cerr << " Recevied code " << http_code;
+			std::cerr << " Received code " << http_code << ' ';
 		}
 		if (errors[0] != 0) {
 			std::cerr << " " << errors << '\n';

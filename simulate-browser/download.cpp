@@ -45,15 +45,15 @@ private:
 			curl_easy_setopt(hnd, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5_HOSTNAME);
 			curl_easy_setopt(hnd, CURLOPT_PROXY, socks->c_str());
 		}
-		for (const auto& header : {"Sec-GPC: 1",
-					"Accept: text/html,application/xhtml+xmlapplication/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+		for (const auto& header : {
+					"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 					"Accept-Language: en-US,en;q=0.5",
-					"DNT: 1",
 					"Sec-GPC: 1",
-					"Sec-Fetch-User: ?1",
-					"Sec-Fetch-Site: same-origin",
-					"Sec-Fetch-Mode: navigate",
+					"DNT: 1",
 					"Sec-Fetch-Dest: document",
+					"Sec-Fetch-Mode: navigate",
+					"Sec-Fetch-Site: same-origin",
+					"Sec-Fetch-User: ?1",
 					"Upgrade-Insecure-Requests: 1"}) {
 			curl_slist_append(headers, header);
 		}

@@ -12,7 +12,7 @@ int main(int argc, const char* const* argv) {
 		std::cout << apply_regex(args.replacements, buf, args.verbose) << '\n';
 	} catch (const argument_error& err) {
 		std::cerr << std::format(
-			"{}\nUsage:\n{} [--verbose] [--socks5-hostname <hostname>] [--regex {{<pattern_1> <replacement_1> ... <pattern_n> <replacement_n>}}] <url>\n",
+			"{}\nUsage:\n{} [--verbose] [--socks5-hostname <hostname>] [--timeout <seconds>] [--regex {{<pattern_1> <replacement_1> ... <pattern_n> <replacement_n>}}] <url>\n",
 			err.what(),
 			argv[0]);
 		return 1;

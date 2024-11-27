@@ -13,14 +13,20 @@ add_library(download
 )
 target_link_libraries(download curl)
 
+add_library(main_lib
+  STATIC
+  ${CMAKE_SOURCE_DIR}/main_lib.cpp
+)
+
 add_executable(simulate-browser)
 target_sources(simulate-browser
   PUBLIC
   ${CMAKE_SOURCE_DIR}/main.cpp
 )
-target_link_libraries(simulate-browser post_process download)
+target_link_libraries(simulate-browser post_process download main_lib)
 
+include(CTest)
 add_executable(simulate-browser_test test_simulate_browser.cpp)
-target_link_libraries(simulate-browser_test PUBLIC gtest post_process download)
+target_link_libraries(simulate-browser_test PUBLIC gtest post_process download main_lib)
 add_test(NAME MainTest COMMAND simulate-browser_test)
 enable_testing()

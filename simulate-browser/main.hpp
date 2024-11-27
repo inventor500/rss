@@ -10,6 +10,13 @@ struct arguments {
 	std::optional<std::string> socks;
 };
 
-arguments parse_arguments(int argc, char** argv);
+// Thrown when parsing arguments fails
+class argument_error : public std::runtime_error {
+public:
+	argument_error() : std::runtime_error{""} {}
+	explicit argument_error(const std::string& what) : std::runtime_error{what} {}
+};
+
+arguments parse_arguments(int argc, const char* const* argv);
 
 std::string get_user_agent();

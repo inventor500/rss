@@ -2,6 +2,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <format>
+#include <curl/curl.h>
+
+curl_tracker::curl_tracker() {
+	if (curl_global_init(CURL_GLOBAL_DEFAULT | CURL_GLOBAL_SSL) != CURLE_OK) {
+		throw std::runtime_error("Failed to initialize cURL");
+	}
+}
+
+curl_tracker::~curl_tracker() {
+	curl_global_cleanup();
+}
 
 bool streq(const char* str1, const char* str2) {
 	return strcmp(str1, str2) == 0;

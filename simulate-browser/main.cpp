@@ -4,6 +4,7 @@
 
 int main(int argc, const char* const* argv) {
 	try {
+		auto curl = curl_tracker{};
 		const arguments args = parse_arguments(argc, argv);
 		Downloader down = (args.socks.has_value()) ?
 			Downloader{args.timeout, get_user_agent(), *args.socks, args.verbose} :

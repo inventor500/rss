@@ -17,6 +17,12 @@ public:
 	explicit argument_error(const std::string& what) : std::runtime_error{what} {}
 };
 
+class curl_tracker {
+public:
+	curl_tracker();
+	~curl_tracker();
+};
+
 arguments parse_arguments(int argc, const char* const* argv);
 
 std::string get_user_agent();

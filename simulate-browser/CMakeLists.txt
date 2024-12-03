@@ -17,6 +17,7 @@ add_library(main_lib
   STATIC
   ${CMAKE_SOURCE_DIR}/main_lib.cpp
 )
+target_link_libraries(main_lib curl)
 
 add_executable(simulate-browser)
 target_sources(simulate-browser

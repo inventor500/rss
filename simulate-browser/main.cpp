@@ -12,9 +12,11 @@ int main(int argc, const char* const* argv) {
 		std::string buf = down.download(args.url);
 		std::cout << apply_regex(args.replacements, buf, args.verbose) << '\n';
 	} catch (const argument_error& err) {
+		if (std::string("").compare(err.what()) != 0) {
+			std::cerr << err.what() << '\n';
+		}
 		std::cerr << std::format(
-			"{}\nUsage:\n{} [--verbose] [--socks5-hostname <hostname>] [--timeout <seconds>] [--regex {{<pattern_1> <replacement_1> ... <pattern_n> <replacement_n>}}] <url>\n",
-			err.what(),
+			"Usage:\n{} [--verbose] [--socks5-hostname <hostname>] [--timeout <seconds>] [--regex {{<pattern_1> <replacement_1> ... <pattern_n> <replacement_n>}}] <url>\n",
 			argv[0]);
 		return 1;
 	} catch (const std::runtime_error& err) {

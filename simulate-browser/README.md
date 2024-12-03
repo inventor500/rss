@@ -1,6 +1,6 @@
 # Simulate Browser
 
-This is a utility that simulates a request from the Firefox web browser. This helps to download feeds from websites that try to ensure that only "real people" download feeds. This is accomplished by setting (almost) all headers to match what Firefox.
+This is a utility that simulates a request from the Firefox web browser. This helps to download feeds from websites that try to ensure that only "real people" download feeds. This is accomplished by setting (almost) all headers to match what Firefox uses.
 
 
 ## Usage

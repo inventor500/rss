@@ -1,3 +1,4 @@
 #! /usr/bin/sh
 
-simulate-browser --regex "dts\\.podtrac\\.com/.*/injector\\.simplecastaudio\\.com" "injector.simplecastaudio.com" '\\?aid=rss_feed.*"' '"' https://feeds.simplecast.com/WCb5SgYj
+simulate-browser --regex "dts\\.podtrac\\.com/.*/injector\\.simplecastaudio\\.com" "injector.simplecastaudio.com" '\\?aid=rss_feed.*"' '"' '<[pP]>[a-zA-Z0-9]*?:.*?(?:[0-9]{1,2}%|\$[0-9]*?).*?</[aA]></[pP]>' '' https://feeds.simplecast.com/WCb5SgYj
+# /<[pP]>.*?\d{1,2}%.*?<\/p>

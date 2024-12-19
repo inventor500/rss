@@ -1,0 +1,5 @@
+#! /usr/bin/sh
+
+# Removes the subscribe link from each article
+simulate-browser --regex '<[aA] href="https://nebraskaexaminer\.com/subscribe".*?>(?:.|\n)*?</[aA]>' '' 'https://nebraskaexaminer.com/feed'
+

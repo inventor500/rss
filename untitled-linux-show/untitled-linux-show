@@ -1,0 +1,4 @@
+#! /usr/bin/sh
+
+simulate-browser --regex 'https://cdn\.twit\.tv/libsyn/uls_\d+/' 'https://traffic.libsyn.com/' https://feeds.twit.tv/uls.xml
+

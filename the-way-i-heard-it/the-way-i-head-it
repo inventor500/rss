@@ -1,3 +1,6 @@
-#! /usr/bin/sh
+#! /bin/sh
 
 simulate-browser --regex "pscrb.fm/.*/traffic.libsyn.com/" "traffic.libsyn.com/" '\?dest-id=\d+"' '"' https://audioboom.com/channels/5060313.rss
+
+# vim:set filetype=sh et:
+

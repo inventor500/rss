@@ -1,4 +1,6 @@
-#! /usr/bin/sh
+#! /bin/sh
 
 simulate-browser --regex "dts\\.podtrac\\.com/.*/injector\\.simplecastaudio\\.com" "injector.simplecastaudio.com" '\\?aid=rss_feed.*"' '"' '<[pP]>[a-zA-Z0-9]*?:.*?(?:[0-9]{1,2}%|\$[0-9]*?).*?</[aA]></[pP]>' '' https://feeds.simplecast.com/WCb5SgYj
+
+# vim:set filetype=sh et:
 

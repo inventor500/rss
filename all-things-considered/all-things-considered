@@ -1,4 +1,6 @@
-#! /usr/bin/sh
+#! /bin/sh
 
 simulate-browser --regex 'play\.podtrac\.com/npr-2/ondemand\.npr\.org' ondemand.npr.org '\.mp3\?orgId=.*?"' '.mp3"' https://www.kuow.org/feeds/podcasts/all-things-considered/podcasts/rss.xml
+
+# vim:set filetype=sh et:
 

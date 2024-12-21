@@ -1,4 +1,6 @@
-#! /usr/bin/sh
+#! /bin/sh
 
 simulate-browser --timeout 10 --regex 'chrt\.fm/.*ondemand\.npr\.org' onedemand.npr.org 'chrt\.fm/.*/traffic\.megaphone\.fm' traffic.megaphone.fm '\?p=.*"' '"' https://feeds.npr.org/500005/podcast.xml
+
+# vim:set filetype=sh et:
 

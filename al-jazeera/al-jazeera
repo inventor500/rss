@@ -1,0 +1,6 @@
+#! /bin/sh
+
+simulate-browser --regex 'apps\.support@aljazeera\.net \(Apps Support\)' 'Al Jazeera' https://www.aljazeera.com/xml/rss/all.xml
+
+# vim:set filetype=sh et:
+

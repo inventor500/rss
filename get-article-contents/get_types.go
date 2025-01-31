@@ -87,24 +87,26 @@ func getPage(id int, url, selector, userAgent string, ch chan *result) {
 func EnrichFeed(feed *feed.Feed, conf *Config) error {
 	var fetchedMap artMap = make(artMap)
 	// How long to wait between requests
-	const sendDelay = 2 * time.Second
+	const sendDelay = 200 * time.Millisecond
 	// Content should go in the <description> tag if this is RSS, or in <content> for atom
 	urls := getUrls(feed, conf.RemoteUrl)
-	urlTimeout := time.Duration(len(urls)) // Convert int to time.Duration to avoid compile errors
-	timeToWait := (urlTimeout * conf.Timeout) + (urlTimeout*sendDelay - 1)
 	ch := make(chan *result, len(urls))
 	for id, url := range urls {
 		go getPage(id, url, conf.CssSelector, conf.UserAgent, ch)
 		// Try and avoid being flagged as a bot
 		time.Sleep(sendDelay)
 	}
+	urlTimeout := time.Duration(len(urls)) // Convert int to time.Duration to avoid compile errors
+	timeToWait := (urlTimeout * conf.Timeout) + (urlTimeout*sendDelay - 1)
 	for i := 0; i < len(urls); i++ {
 		select {
 		case r := <-ch:
-			if r.Err != nil {
+			if r.Err == nil {
 				fetchedMap[r.Id] = r.Content
+			} else {
+				fetchedMap[r.Id] = nil
 			}
-			// TODO: Log the error somewhere?
+		// TODO: Log the error somewhere?
 		case <-time.After(timeToWait):
 			return errors.Join(fmt.Errorf("waited %s seconds", timeToWait), ErrTimeoutReached)
 		}

@@ -1,0 +1,4 @@
+#! /bin/sh
+
+get-article-contents https://www.bleepingcomputer.com/feed/
+

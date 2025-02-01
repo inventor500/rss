@@ -26,7 +26,7 @@ type Config struct {
 }
 
 func GetFeed(conf *Config) (*feed.Feed, error) {
-	trans := http.Transport{IdleConnTimeout: 10 * time.Second}
+	trans := http.Transport{IdleConnTimeout: conf.Timeout}
 	client := http.Client{Transport: &trans}
 	req, err := http.NewRequest("GET", conf.RemoteUrl, nil)
 	if err != nil {
@@ -59,7 +59,7 @@ func EnrichFeed(feed *feed.Feed, conf *Config) error {
 	urls := getUrls(feed, conf.RemoteUrl)
 	ch := make(chan *result, len(urls))
 	for id, url := range urls {
-		go getPage(id, url, conf.CssSelector, conf.UserAgent, ch)
+		go getPage(id, url, conf.CssSelector, conf.UserAgent, conf.Timeout, ch)
 		// Try and avoid being flagged as a bot
 		time.Sleep(sendDelay)
 	}
@@ -120,6 +120,12 @@ func MakeFeed(feed *feed.Feed) string {
 	// Program used to create the feed
 	if feed.Generator != "" {
 		root.AddChild(createTextElement("generator", feed.Generator, doc))
+	}
+	if feed.Image != nil && feed.Image.URL != "" {
+		// TODO: Check if this should be a logo instead?
+		// Logos should be twice as tall as they are wide,
+		// but icons should be square
+		root.AddChild(createTextElement("icon", feed.Image.URL, doc))
 	}
 	// This is pointless without these
 	for _, item := range feed.Items {
@@ -222,7 +228,7 @@ type result struct {
 	Err     error
 }
 
-func getPage(id int, url, selector, userAgent string, ch chan *result) {
+func getPage(id int, url, selector, userAgent string, timeout time.Duration, ch chan *result) {
 	res := result{Id: id}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -230,7 +236,7 @@ func getPage(id int, url, selector, userAgent string, ch chan *result) {
 		ch <- &res
 		return
 	}
-	trans := http.Transport{IdleConnTimeout: 10 * time.Second}
+	trans := http.Transport{IdleConnTimeout: timeout}
 	client := &http.Client{Transport: &trans}
 	addHeaders(url, userAgent, req)
 	r, err := client.Do(req)

@@ -33,7 +33,8 @@ func mainFunc() error {
 	if err != nil {
 		return err
 	}
-	// FIXME: This does not print the feed, it prints a JSON representation of it
+	// TODO: The feed format is not recognized by RSS Guard
+	// TODO: The HTML tags are being replaced with escape sequences. Is this the problem?
 	fmt.Println(feed)
 	return nil
 }

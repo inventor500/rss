@@ -24,6 +24,65 @@ type Config struct {
 	Timeout     time.Duration
 }
 
+func GetFeed(conf *Config) (*feed.Feed, error) {
+	trans := http.Transport{IdleConnTimeout: 10 * time.Second}
+	client := http.Client{Transport: &trans}
+	req, err := http.NewRequest("GET", conf.RemoteUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	addHeaders(conf.RemoteUrl, conf.UserAgent, req)
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	var reader io.ReadCloser = res.Body
+	if res.Header.Get("content-encoding") == "gzip" {
+		r, err := gzip.NewReader(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer r.Close()
+		reader = r
+	}
+	parser := feed.NewParser()
+	return parser.Parse(reader)
+}
+
+func EnrichFeed(feed *feed.Feed, conf *Config) error {
+	var fetchedMap artMap = make(artMap)
+	// How long to wait between requests
+	const sendDelay = 200 * time.Millisecond
+	// Content should go in the <description> tag if this is RSS, or in <content> for atom
+	urls := getUrls(feed, conf.RemoteUrl)
+	ch := make(chan *result, len(urls))
+	for id, url := range urls {
+		go getPage(id, url, conf.CssSelector, conf.UserAgent, ch)
+		// Try and avoid being flagged as a bot
+		time.Sleep(sendDelay)
+	}
+	for i := 0; i < len(urls); i++ {
+		r := <-ch
+		if r.Err == nil {
+			fetchedMap[r.Id] = r.Content
+		} else {
+			// TODO: Log this somewhere
+			fetchedMap[r.Id] = nil
+		}
+	}
+	for id, doc := range fetchedMap {
+		if doc == nil {
+			continue
+		}
+		h, err := doc.Html()
+		if err == nil {
+			feed.Items[id].Content = h
+		}
+	}
+	return nil
+}
+
 // Map article URLs to their contents
 type artMap map[int]*goquery.Selection
 
@@ -41,7 +100,8 @@ func getPage(id int, url, selector, userAgent string, ch chan *result) {
 		ch <- &res
 		return
 	}
-	client := &http.Client{}
+	trans := http.Transport{IdleConnTimeout: 10 * time.Second}
+	client := &http.Client{Transport: &trans}
 	addHeaders(url, userAgent, req)
 	r, err := client.Do(req)
 	if err != nil {
@@ -82,70 +142,6 @@ func getPage(id int, url, selector, userAgent string, ch chan *result) {
 		ch <- &res
 		return
 	}
-}
-
-func EnrichFeed(feed *feed.Feed, conf *Config) error {
-	var fetchedMap artMap = make(artMap)
-	// How long to wait between requests
-	const sendDelay = 200 * time.Millisecond
-	// Content should go in the <description> tag if this is RSS, or in <content> for atom
-	urls := getUrls(feed, conf.RemoteUrl)
-	ch := make(chan *result, len(urls))
-	for id, url := range urls {
-		go getPage(id, url, conf.CssSelector, conf.UserAgent, ch)
-		// Try and avoid being flagged as a bot
-		time.Sleep(sendDelay)
-	}
-	urlTimeout := time.Duration(len(urls)) // Convert int to time.Duration to avoid compile errors
-	timeToWait := (urlTimeout * conf.Timeout) + (urlTimeout*sendDelay - 1)
-	for i := 0; i < len(urls); i++ {
-		select {
-		case r := <-ch:
-			if r.Err == nil {
-				fetchedMap[r.Id] = r.Content
-			} else {
-				fetchedMap[r.Id] = nil
-			}
-		// TODO: Log the error somewhere?
-		case <-time.After(timeToWait):
-			return errors.Join(fmt.Errorf("waited %s seconds", timeToWait), ErrTimeoutReached)
-		}
-	}
-	for id, doc := range fetchedMap {
-		if doc == nil {
-			continue
-		}
-		h, err := doc.Html()
-		if err == nil {
-			feed.Items[id].Content = h
-		}
-	}
-	return nil
-}
-
-func GetFeed(conf *Config) (*feed.Feed, error) {
-	client := http.Client{}
-	req, err := http.NewRequest("GET", conf.RemoteUrl, nil)
-	if err != nil {
-		return nil, err
-	}
-	addHeaders(conf.RemoteUrl, conf.UserAgent, req)
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	var reader io.ReadCloser = res.Body
-	if res.Header.Get("content-encoding") == "gzip" {
-		r, err := gzip.NewReader(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		reader = r
-	}
-	parser := feed.NewParser()
-	return parser.Parse(reader)
 }
 
 func addHeaders(url, userAgent string, req *http.Request) {

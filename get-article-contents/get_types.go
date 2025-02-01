@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/beevik/etree"
 	feed "github.com/mmcdole/gofeed"
 )
 
@@ -81,6 +82,135 @@ func EnrichFeed(feed *feed.Feed, conf *Config) error {
 		}
 	}
 	return nil
+}
+
+// Convert the gofeed object into an ATOM feed
+func MakeFeed(feed *feed.Feed) string {
+	if feed == nil {
+		return ""
+	}
+	doc := etree.NewDocument()
+	root := doc.CreateElement("feed")
+	doc.SetRoot(root)
+	// Make this an ATOM feed
+	root.CreateAttr("xmlns", "http://www.w3.org/2005/Atom")
+	// Title is mandatory
+	root.AddChild(createTextElement("title", feed.Title, doc))
+	// Id is mandatory
+	// TODO: How to get this? It is not included in the parsed feed.
+	root.AddChild(createTextElement("id", "", doc))
+	if feed.Link != "" {
+		root.AddChild(createLink(feed.Link, "", doc))
+	}
+	// Updated is mandatory
+	if feed.Updated != "" {
+		root.AddChild(createTextElement("updated", feed.Updated, doc))
+	} else {
+		root.AddChild(createTextElement("updated", currentTime(), doc))
+	}
+	if feed.Copyright != "" {
+		root.AddChild(createTextElement("copyright", feed.Copyright, doc))
+	}
+	// If at least one author is not specified, then every article must have an author
+	if len(feed.Authors) > 0 {
+		for _, author := range feed.Authors {
+			root.AddChild(createAuthor(author, doc))
+		}
+	}
+	// Program used to create the feed
+	if feed.Generator != "" {
+		root.AddChild(createTextElement("generator", feed.Generator, doc))
+	}
+	// This is pointless without these
+	for _, item := range feed.Items {
+		root.AddChild(createItem(item, doc))
+	}
+	str, _ := doc.WriteToString()
+	return str
+}
+
+func createItem(item *feed.Item, doc *etree.Document) *etree.Element {
+	root := doc.CreateElement("item")
+	// Title, ID, and Updated are all mandatory
+	root.AddChild(createTextElement("title", item.Title, doc))
+	root.AddChild(createTextElement("id", item.GUID, doc))
+	if item.Updated != "" {
+		root.AddChild(createTextElement("updated", item.Updated, doc))
+		if item.Published != "" {
+			root.AddChild(createTextElement("published", item.Published, doc))
+		}
+	} else {
+		// Since this is mandatory, used published date to fill in
+		root.AddChild(createTextElement("updated", item.Published, doc))
+	}
+	// Technically optional
+	for _, author := range item.Authors {
+		root.AddChild(createAuthor(author, doc))
+	}
+	if item.Description != "" {
+		// TODO: Does this escape the HTML/XML?
+		if content, err := parseXML(item.Description); err == nil && content != nil {
+			// Only create if able to parse
+			summary := doc.CreateElement("summary")
+			summary.AddChild(content)
+			root.AddChild(summary)
+		}
+	}
+	// This one is why this whole program exists
+	if item.Content != "" {
+		if content, err := parseXML(item.Content); err == nil && content != nil {
+			element := doc.CreateElement("content")
+			element.AddChild(content)
+			root.AddChild(element)
+		}
+	}
+	if len(item.Categories) > 0 {
+		for _, category := range item.Categories {
+			cat := doc.CreateElement("category")
+			cat.CreateAttr("term", category)
+			root.AddChild(cat)
+		}
+	}
+	// TODO: Add other elements?
+	return root
+}
+
+func parseXML(xml string) (*etree.Element, error) {
+	doc := etree.NewDocument()
+	if err := doc.ReadFromString(xml); err != nil {
+		return nil, err
+	}
+	return doc.Root(), nil
+}
+
+func createAuthor(author *feed.Person, doc *etree.Document) *etree.Element {
+	root := doc.CreateElement("author")
+	if author.Name != "" {
+		root.AddChild(createTextElement("name", author.Name, doc))
+	}
+	if author.Email != "" {
+		root.AddChild(createTextElement("email", author.Email, doc))
+	}
+	return root
+}
+
+func createLink(href, text string, doc *etree.Document) *etree.Element {
+	link := createTextElement("link", text, doc)
+	doc.CreateAttr("href", href)
+	return link
+}
+
+// Make an ISO-formatted datetime string
+func currentTime() string {
+	format := "1970-01-01T15:04:05Z"
+	return time.Now().Format(format)
+}
+
+func createTextElement(tag, text string, doc *etree.Document) *etree.Element {
+	element := doc.CreateElement(tag)
+	t := doc.CreateText(text)
+	element.AddChild(t)
+	return element
 }
 
 // Map article URLs to their contents

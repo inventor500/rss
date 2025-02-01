@@ -33,9 +33,7 @@ func mainFunc() error {
 	if err != nil {
 		return err
 	}
-	// TODO: The feed format is not recognized by RSS Guard
-	// TODO: The HTML tags are being replaced with escape sequences. Is this the problem?
-	fmt.Println(feed)
+	fmt.Println(getter.MakeFeed(feed))
 	return nil
 }
 

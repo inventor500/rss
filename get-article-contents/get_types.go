@@ -130,7 +130,7 @@ func MakeFeed(feed *feed.Feed) string {
 }
 
 func createItem(item *feed.Item, doc *etree.Document) *etree.Element {
-	root := doc.CreateElement("item")
+	root := doc.CreateElement("entry")
 	// Title, ID, and Updated are all mandatory
 	root.AddChild(createTextElement("title", item.Title, doc))
 	root.AddChild(createTextElement("id", item.GUID, doc))

@@ -1,0 +1,4 @@
+#! /bin/sh
+
+get-article-contents --selector '.ArticleBase-BodyContent' https://www.darkreading.com/rss.xml
+

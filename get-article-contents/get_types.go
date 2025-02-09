@@ -100,7 +100,11 @@ func MakeFeed(feed *feed.Feed) string {
 	// TODO: How to get this? It is not included in the parsed feed.
 	root.AddChild(createTextElement("id", "", doc))
 	if feed.Link != "" {
-		root.AddChild(createLink(feed.Link, "", doc))
+		root.AddChild(createLink(feed.Link, doc))
+	} else {
+		for _, link := range feed.Links {
+			root.AddChild(createLink(link, doc))
+		}
 	}
 	// Updated is mandatory
 	if feed.Updated != "" {
@@ -162,6 +166,14 @@ func createItem(item *feed.Item, doc *etree.Document) *etree.Element {
 			root.AddChild(summary)
 		}
 	}
+	// Add links
+	if item.Link != "" {
+		root.AddChild(createLink(item.Link, doc))
+	} else {
+		for _, link := range item.Links {
+			root.AddChild(createLink(link, doc))
+		}
+	}
 	// This one is why this whole program exists
 	if item.Content != "" {
 		if content, err := parseXML(item.Content); err == nil && content != nil {
@@ -200,9 +212,9 @@ func createAuthor(author *feed.Person, doc *etree.Document) *etree.Element {
 	return root
 }
 
-func createLink(href, text string, doc *etree.Document) *etree.Element {
-	link := createTextElement("link", text, doc)
-	doc.CreateAttr("href", href)
+func createLink(href string, doc *etree.Document) *etree.Element {
+	link := doc.CreateElement("link")
+	link.CreateAttr("href", href)
 	return link
 }
 

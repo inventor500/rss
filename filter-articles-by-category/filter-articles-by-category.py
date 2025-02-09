@@ -10,7 +10,7 @@ def main(args: list[str]) -> None:
     """The main function."""
     if len(args) <= 2:
         print(f"Usage: {args[0]} "
-              "{<filename>|-]} {<category1> ... <categoryn>}\n\"-\" "
+              "{<filename>|->} {<category1> ... <categoryn>}\n\"-\" "
               "will read from standard in", file=sys.stderr)
         sys.exit(1)
     feed: ElementTree.ElementTree

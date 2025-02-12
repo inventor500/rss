@@ -17,3 +17,5 @@ simulate-browser/cmd/simulate-browser/simulate-browser
 build
 .fingerprint
 target
+.mypy_cache
+__pycache__

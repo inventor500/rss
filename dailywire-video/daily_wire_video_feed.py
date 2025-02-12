@@ -23,6 +23,7 @@ Code has only been tested on Python 3.13 (as of Feb. 2025).
 ## Imports
 
 from atexit import register as atexit
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from html import escape
 from os import path
@@ -274,23 +275,22 @@ def get_videos(series_name: str) -> list[VideoElement]:
         raise RuntimeError("Invalid episode list: Missing componentItems element")
     if not isinstance(js["componentItems"], list):
         raise RuntimeError("Invalid episode list: componentItems is not a List")
-    results: list[VideoElement] = []
     build_id = get_build_id(f"https://www.dailywire.com/show/{params['slug']}")
-    # TODO: Do this in parallel?
-    for item in js["componentItems"]:
+    def process_video(item: dict[str, Any]) -> VideoElement|None:
+        """Process a video."""
         parsed = create_video(item)
-        if parsed is not None:
-            if parsed.slug is not None:
-                # The ID is required to fetch the video URL
-                try:
-                    # Get the video url if possible
-                    parsed.video_url = get_video_url(parsed, build_id)
-                    if parsed.video_url.lower() == "access denied":
-                        continue # Video is not released yet
-                except RuntimeError as err:
-                    syslog.syslog(syslog.LOG_INFO, str(err))
-            results.append(parsed)
-    return results
+        if parsed is None or parsed.slug is None:
+            return None
+        try:
+            parsed.video_url = get_video_url(parsed, build_id)
+            if parsed.video_url.lower() == "access denied":
+                return None
+        except RuntimeError as err:
+            syslog.syslog(syslog.LOG_INFO, str(err))
+        return parsed
+    with ThreadPoolExecutor(max_workers=3) as exec:
+        results = [exec.submit(process_video, item) for item in js["componentItems"]]
+        return [res for res in (_r.result() for _r in results) if res is not None]
 
 
 ## Driver

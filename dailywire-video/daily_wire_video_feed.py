@@ -217,7 +217,7 @@ def get_video_url(article: VideoElement, buildid: str) -> str:
        or len(cmap) < 1 \
        or "video" not in (cmap := cmap[0]):
         raise RuntimeError("Unable to extract video url from episode data")
-    # TODO: Is this URL stable? Most of the URL is a token
+    # TODO: This link is not stable, the token eventually expires
     assert isinstance(cmap["video"], str)
     assert len(cmap["video"]) > 0
     return cmap["video"]

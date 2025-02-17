@@ -5,6 +5,7 @@ NPR does not put the URL of the audio in the RSS feed.
 
 Requirements:
 Depends on the requests and beautiful soup 4 libraries.
+Depends on lxml (for use by beautiful soup).
 Due to the use of the "walrus operator" (:=), this requires at least Python 3.8.
 Code has only been tested on Python 3.13 (as of Feb. 2025).
 """
@@ -167,6 +168,9 @@ def enrich_article(article: Element, media: str|None, body: bs4.BeautifulSoup, d
                 "href": media,
         }.items():
             enclosure.setAttribute(key, val)
+        # RSS Guard seems to assume that untyped links are jpegs
+        if media.endswith(".mp3"):
+            enclosure.setAttribute("type", "audio/mpeg")
         article.appendChild(enclosure)
     # TODO: Append the text somehow?
 
@@ -189,6 +193,8 @@ def enrich_articles(feed: Document|Element, sess: requests.Session, doc: Documen
         if result is None:
             continue
         media_url, body, entry = result
+        # The Python documentation does not mention minidom being thread-safe,
+        # so update this in serial
         enrich_article(entry, media_url, body, doc)
 
 if __name__ == "__main__":

@@ -3,6 +3,8 @@
 """
 Download a show from the Daily Wire and convert it into an Atom podcast feed.
 This will only work with releases that do not require a payed subscription.
+This script can be put in any feed reader that supports calling an external
+script, e.g. Newsboat or RSS Guard.
 
 The feed name is derived from the URL, e.g.
 "www.dailywire.com/show/the-ben-shapiro-show" -> "The Ben Shapiro Show"
@@ -99,7 +101,6 @@ class VideoElement:
         entry = doc.createElement("entry")
         entry.appendChild(create_text_element("title", escape(self.title), doc))
         entry.appendChild(create_link_element("link", self.article_url, doc))
-        # FIXME: Not currently getting the id
         _id = self._id if self._id is not None else self.article_url
         entry.appendChild(create_text_element("id", escape(_id), doc))
         entry.appendChild(create_text_element("updated", self.published, doc))

@@ -1,0 +1,6 @@
+#! /bin/sh
+
+simulate-browser --regex '\n' '' '<div class=".*?(?:wp-block-related-embedded-articles|wp-block-ct-related-embedded-articles).*?".*?(?:<section class="article".*?</section>\s*)+</div>' '' https://www.christianitytoday.com/feed/
+
+# vim:set filetype=sh et:
+

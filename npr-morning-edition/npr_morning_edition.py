@@ -6,24 +6,28 @@ NPR does not put the URL of the audio in the RSS feed.
 Requirements:
 Depends on the requests and beautiful soup 4 libraries.
 Depends on lxml (for use by beautiful soup).
+Requires a UNIX-like system due to use of Python's syslog library.
 Due to the use of the "walrus operator" (:=), this requires at least Python 3.8.
 Code has only been tested on Python 3.13 (as of Feb. 2025).
 """
 
-from xml.dom.minidom import parseString, Document, Element
-from sys import stderr, exit, argv
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from os import getenv
+from sys import stderr, exit, argv
+from traceback import extract_tb
+from xml.dom.minidom import parseString, Document, Element
+import re
+import syslog
 import bs4
 import requests
-import re
 
 BASE_URL: str = "https://feeds.npr.org/3/rss.xml"
 DEFAULT_USER_AGENT: str = "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
 
 def main(args: list[str]) -> None:
     """The main function."""
+    syslog.openlog(ident="NprMorningEdition", facility=syslog.LOG_NEWS)
     try:
         with requests.Session() as session:
             session.headers.update({
@@ -45,7 +49,11 @@ def main(args: list[str]) -> None:
             enrich_articles(feed, session, feed)
             print(feed.toprettyxml())
     except BaseException as err:
-        print(err, file=stderr)
+        print(f"Unable to download: {err}", file=stderr)
+        syslog.syslog(
+            syslog.LOG_ERR,
+            f"Unable to download: {err}\n{'\n'.join(extract_tb(err.__traceback__).format())}",
+        )
         exit(1)
 
 def get_feed(url: str, sess: requests.Session) -> Document:
@@ -135,29 +143,37 @@ def get_single_element(tag: str, node: Element|Document) -> Element|None:
     nodes = node.getElementsByTagName(tag)
     return None if len(nodes) == 0 else nodes[0]
 
-def get_article(element: Element, session: requests.Session) -> tuple[str, bs4.BeautifulSoup, Element]|None:
+def get_article(
+        element: Element,
+        session: requests.Session
+) -> tuple[str, bs4.BeautifulSoup, Element]|Element:
     """Download the article and extract the media URL and text content.
     Returns the associated element for easier processing later.
+    If only the element is returned, then the fetch failed, and the element may be discarded.
     """
     try:
         if (link_node := get_single_element("link", element)) is None:
-            return None
+            syslog.syslog(syslog.LOG_INFO, "Unable to find a link for the entry")
+            return element
         if not (link := link_node.getAttribute("href")):
-            return None
+            syslog.syslog(syslog.LOG_INFO, "The link does not contain an href attribute")
+            return element
         res = session.get(link)
         res.raise_for_status()
         body = bs4.BeautifulSoup(res.text, "lxml")
         url_node = body.find(lambda x: x.has_attr("href"), class_="audio-module-listen")
         if not isinstance(url_node, bs4.Tag) or not isinstance(url := url_node.attrs.get("href"), str):
-            return None
+            syslog.syslog(syslog.LOG_INFO, f"Unable to extract media url from article at {link}")
+            return element
         url = re.sub(r"\?.*?$", "", url)
         # TODO: This removal of script tags is in case this is ever included in the <content> of the entry
         # As of now, it doesn't do anything useful
         # for script in body.find_all("script"): # Remove script tags
         #     script.destroy()
         return (url, body, element)
-    except BaseException:
-        return None
+    except BaseException as err:
+        syslog.syslog(syslog.LOG_ERR, f"Error while fetching entry media: {err}")
+        return element
 
 def enrich_article(article: Element, media: str|None, body: bs4.BeautifulSoup, doc: Document):
     """Enrich the article contents."""
@@ -171,6 +187,8 @@ def enrich_article(article: Element, media: str|None, body: bs4.BeautifulSoup, d
         # RSS Guard seems to assume that untyped links are jpegs
         if media.endswith(".mp3"):
             enclosure.setAttribute("type", "audio/mpeg")
+        else:
+            syslog.syslog(syslog.LOG_DEBUG, f"The media link is not to an mp3: {media}")
         article.appendChild(enclosure)
     # TODO: Append the text somehow?
 
@@ -190,7 +208,9 @@ def enrich_articles(feed: Document|Element, sess: requests.Session, doc: Documen
         futures = [pool.submit(get_article, entry, sess) for entry in feed.getElementsByTagName("entry")]
     for future in futures:
         result = future.result()
-        if result is None:
+        if isinstance(result, Element):
+            syslog.syslog(syslog.LOG_INFO, "Removing entry from feed")
+            result.parentNode.removeChild(result)
             continue
         media_url, body, entry = result
         # The Python documentation does not mention minidom being thread-safe,

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -27,8 +27,7 @@ type Config struct {
 	Proxy       string
 }
 
-func GetFeed(conf *Config) (*feed.Feed, error) {
-	client := http.Client{}
+func GetFeed(conf *Config, client *http.Client) (*feed.Feed, error) {
 	req, err := http.NewRequest("GET", conf.RemoteUrl, nil)
 	if err != nil {
 		return nil, err
@@ -55,29 +54,23 @@ func GetFeed(conf *Config) (*feed.Feed, error) {
 func feedWorker(in chan struct {
 	string
 	int
-}, out chan *result, conf *Config, wg *sync.WaitGroup) {
-	defer wg.Done()
-	client := &http.Client{}
+}, out chan *result, conf *Config, client *http.Client) {
 	for url := range in {
 		out <- getPage(url.int, url.string, conf.CssSelector, conf.UserAgent, client)
 	}
 }
 
-func EnrichFeed(feed *feed.Feed, conf *Config) error {
+func EnrichFeed(feed *feed.Feed, conf *Config, client *http.Client) error {
 	var fetchedMap artMap = make(artMap)
-	// How long to wait between requests
-	// Content should go in the <description> tag if this is RSS, or in <content> for atom
 	urls := getUrls(feed, conf.RemoteUrl)
 	in := make(chan struct {
 		string
 		int
 	})
 	out := make(chan *result, len(urls))
-	wg := new(sync.WaitGroup)
 	// Initialize the workgroup
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go feedWorker(in, out, conf, wg)
+	for range 3 {
+		go feedWorker(in, out, conf, client)
 	}
 	// Run
 	for id, url := range urls {
@@ -86,23 +79,26 @@ func EnrichFeed(feed *feed.Feed, conf *Config) error {
 			int
 		}{url, id}
 	}
-	close(in)
-	for i := 0; i < len(urls); i++ {
+	for range len(urls) {
 		r := <-out
 		if r.Err == nil {
 			fetchedMap[r.Id] = r.Content
 		} else {
-			fetchedMap[r.Id] = nil
+			log.Printf("Received error when downloading article: %s", r.Err)
 		}
 	}
-	wg.Wait() // TODO: Is this really necessary?
 	for id, doc := range fetchedMap {
 		if doc == nil { // Nothing was found
 			continue
 		}
 		h, err := doc.Html()
-		if err == nil {
+		if err == nil && h != "" {
 			feed.Items[id].Content = h
+		} else if err != nil {
+			log.Printf("Failed to produce article Html: %s", err)
+		} else {
+			// Link could theoretically be empty here, but likely won't be
+			log.Printf("Received no viable Html for %s", feed.Items[id].Link)
 		}
 	}
 	return nil
@@ -200,11 +196,12 @@ func createItem(item *feed.Item, doc *etree.Document) *etree.Element {
 	}
 	// This one is why this whole program exists
 	if item.Content != "" {
-		if content, err := parseXML(item.Content); err == nil && content != nil {
-			element := doc.CreateElement("content")
-			element.AddChild(content)
-			root.AddChild(element)
-		}
+		element := createTextElement("content", item.Content, doc)
+		element.CreateAttr("type", "html")
+		root.AddChild(element)
+	} else {
+		// Link could be empty here, but probably won't be
+		log.Printf("Article '%s' has no content", item.Link)
 	}
 	if len(item.Categories) > 0 {
 		for _, category := range item.Categories {

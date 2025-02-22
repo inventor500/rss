@@ -29,12 +29,16 @@ func mainFunc() error {
 	if err := setHttpDefaults(conf.Proxy, conf.Timeout); err != nil {
 		return err
 	}
+	if err = initLog(); err != nil {
+		return err
+	}
+	client := http.Client{}
 	// TODO: Maybe support reading from stdin for post-processing only?
-	feed, err := getter.GetFeed(conf)
+	feed, err := getter.GetFeed(conf, &client)
 	if err != nil {
 		return err
 	}
-	err = getter.EnrichFeed(feed, conf)
+	err = getter.EnrichFeed(feed, conf, &client)
 	if err != nil {
 		return err
 	}

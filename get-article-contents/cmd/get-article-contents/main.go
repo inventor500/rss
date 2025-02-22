@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -22,6 +24,9 @@ func main() {
 func mainFunc() error {
 	conf, err := parseArgs()
 	if err != nil {
+		return err
+	}
+	if err := setHttpDefaults(conf.Proxy, conf.Timeout); err != nil {
 		return err
 	}
 	// TODO: Maybe support reading from stdin for post-processing only?
@@ -45,6 +50,7 @@ func parseArgs() (*getter.Config, error) {
 	flag.StringVar(&conf.CssSelector, "selector", "article", "The CSS selector to use when extractoring articles")
 	flag.DurationVar(&conf.Timeout, "timeout", 10*time.Second, "Duration for which to wait for each individual feed.")
 	flag.StringVar(&conf.UserAgent, "user-agent", "", fmt.Sprintf("User agent. If not specified, will read from, in order, the RSS_USER_AGENT and USER_AGENT environment variables. If neither of those is specified, will use the default user agent (%s).", DefaultUserAgent))
+	flag.StringVar(&conf.Proxy, "proxy", "", "Proxy URL to use for HTTP requests, e.g. socks5h://localhost:8090")
 	flag.Parse()
 	if conf.RemoteUrl == "" {
 		if len(flag.Args()) == 1 {
@@ -65,4 +71,17 @@ func parseArgs() (*getter.Config, error) {
 		conf.UserAgent = DefaultUserAgent
 	}
 	return &conf, nil
+}
+
+func setHttpDefaults(proxyUrl string, timeout time.Duration) error {
+	var proxy = http.ProxyFromEnvironment
+	if proxyUrl != "" {
+		u, err := url.Parse(proxyUrl)
+		if err != nil {
+			return err
+		}
+		proxy = http.ProxyURL(u)
+	}
+	http.DefaultTransport = &http.Transport{Proxy: proxy, IdleConnTimeout: timeout}
+	return nil
 }

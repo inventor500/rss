@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -23,11 +24,11 @@ type Config struct {
 	CssSelector string
 	UserAgent   string
 	Timeout     time.Duration
+	Proxy       string
 }
 
 func GetFeed(conf *Config) (*feed.Feed, error) {
-	trans := http.Transport{IdleConnTimeout: conf.Timeout}
-	client := http.Client{Transport: &trans}
+	client := http.Client{}
 	req, err := http.NewRequest("GET", conf.RemoteUrl, nil)
 	if err != nil {
 		return nil, err
@@ -51,29 +52,52 @@ func GetFeed(conf *Config) (*feed.Feed, error) {
 	return parser.Parse(reader)
 }
 
+func feedWorker(in chan struct {
+	string
+	int
+}, out chan *result, conf *Config, wg *sync.WaitGroup) {
+	defer wg.Done()
+	client := &http.Client{}
+	for url := range in {
+		out <- getPage(url.int, url.string, conf.CssSelector, conf.UserAgent, client)
+	}
+}
+
 func EnrichFeed(feed *feed.Feed, conf *Config) error {
 	var fetchedMap artMap = make(artMap)
 	// How long to wait between requests
-	const sendDelay = 200 * time.Millisecond
 	// Content should go in the <description> tag if this is RSS, or in <content> for atom
 	urls := getUrls(feed, conf.RemoteUrl)
-	ch := make(chan *result, len(urls))
-	for id, url := range urls {
-		go getPage(id, url, conf.CssSelector, conf.UserAgent, conf.Timeout, ch)
-		// Try and avoid being flagged as a bot
-		time.Sleep(sendDelay)
+	in := make(chan struct {
+		string
+		int
+	})
+	out := make(chan *result, len(urls))
+	wg := new(sync.WaitGroup)
+	// Initialize the workgroup
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go feedWorker(in, out, conf, wg)
 	}
+	// Run
+	for id, url := range urls {
+		in <- struct {
+			string
+			int
+		}{url, id}
+	}
+	close(in)
 	for i := 0; i < len(urls); i++ {
-		r := <-ch
+		r := <-out
 		if r.Err == nil {
 			fetchedMap[r.Id] = r.Content
 		} else {
-			// TODO: Log this somewhere
 			fetchedMap[r.Id] = nil
 		}
 	}
+	wg.Wait() // TODO: Is this really necessary?
 	for id, doc := range fetchedMap {
-		if doc == nil {
+		if doc == nil { // Nothing was found
 			continue
 		}
 		h, err := doc.Html()
@@ -240,28 +264,23 @@ type result struct {
 	Err     error
 }
 
-func getPage(id int, url, selector, userAgent string, timeout time.Duration, ch chan *result) {
+func getPage(id int, url, selector, userAgent string, client *http.Client) *result {
 	res := result{Id: id}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		res.Err = err
-		ch <- &res
-		return
+		return &res
 	}
-	trans := http.Transport{IdleConnTimeout: timeout}
-	client := &http.Client{Transport: &trans}
 	addHeaders(url, userAgent, req)
 	r, err := client.Do(req)
 	if err != nil {
 		res.Err = err
-		ch <- &res
-		return
+		return &res
 	}
 	defer r.Body.Close()
 	if r.StatusCode != 200 {
 		res.Err = fmt.Errorf("received error code %d", r.StatusCode)
-		ch <- &res
-		return
+		return &res
 	}
 	// gzip was requested in the added headers
 	var reader io.ReadCloser = r.Body
@@ -269,26 +288,22 @@ func getPage(id int, url, selector, userAgent string, timeout time.Duration, ch 
 		reader, err = gzip.NewReader(r.Body)
 		if err != nil {
 			res.Err = err
-			ch <- &res
-			return
+			return &res
 		}
 		defer reader.Close()
 	}
 	doc, err := goquery.NewDocumentFromReader(reader)
 	if err != nil {
 		res.Err = err
-		ch <- &res
-		return
+		return &res
 	}
 	selection := doc.Find(selector)
 	if selection.Size() > 0 {
 		res.Content = selection
-		ch <- &res
-		return
+		return &res
 	} else {
 		res.Err = ErrNoMatches
-		ch <- &res
-		return
+		return &res
 	}
 }
 

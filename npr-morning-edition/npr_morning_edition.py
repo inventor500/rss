@@ -3,6 +3,9 @@
 """
 NPR does not put the URL of the audio in the RSS feed.
 
+Usage:
+python npr_podcast_downloader.py [--proxy <proxy>] [url]
+
 Requirements:
 Depends on the requests and beautiful soup 4 libraries.
 Depends on lxml (for use by beautiful soup).
@@ -12,26 +15,30 @@ Code has only been tested on Python 3.13 (as of Feb. 2025).
 """
 
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from datetime import datetime
 from os import getenv
 from sys import stderr, exit, argv
 from traceback import extract_tb
 from xml.dom.minidom import parseString, Document, Element
+import argparse
 import re
 import syslog
 import bs4
 import requests
 
-BASE_URL: str = "https://feeds.npr.org/3/rss.xml"
+BASE_URL: str = "https://feeds.npr.org/3/rss.xml" # Morning Edition
 DEFAULT_USER_AGENT: str = "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
 
 def main(args: list[str]) -> None:
     """The main function."""
-    syslog.openlog(ident="NprMorningEdition", facility=syslog.LOG_NEWS)
+    syslog.openlog(ident="NprPodcastDownloader", facility=syslog.LOG_NEWS)
     try:
         with requests.Session() as session:
+            conf = parse_args(args)
+            # Set the default headers
             session.headers.update({
-                "User-Agent": get_user_agent(),
+                "User-Agent": conf.user_agent,
                 "Referer": "https://www.npr.org",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Sec-Fetch-Dest": "document",
@@ -40,12 +47,14 @@ def main(args: list[str]) -> None:
                 "Sec-Fetch-User": "?1",
                 "Sec-GPC": "1",
             })
-            if len(args) > 1 and (args[1].startswith("socks5") or args[1].startswith("http")):
+            # Set the proxy
+            if conf.proxy is not None:
                 session.proxies.update({
-                    "http": args[1],
-                    "https": args[1],
+                    "http": conf.proxy,
+                    "https": conf.proxy,
                 })
-            feed = convert_feed(get_feed(BASE_URL, session))
+            # Download and convert the feed
+            feed = convert_feed(get_feed(conf.url, session))
             enrich_articles(feed, session, feed)
             print(feed.toprettyxml())
     except BaseException as err:
@@ -55,6 +64,35 @@ def main(args: list[str]) -> None:
             f"Unable to download: {err}\n{'\n'.join(extract_tb(err.__traceback__).format())}",
         )
         exit(1)
+
+
+def get_user_agent() -> str:
+    """Get the user agent to use."""
+    if (env := getenv("RSS_USER_AGENT")) is not None:
+        return env
+    if (env := getenv("USER_AGENT")) is not None:
+        return env
+    return DEFAULT_USER_AGENT
+
+@dataclass
+class Config:
+    proxy: str|None = None
+    url: str = BASE_URL
+    user_agent: str = get_user_agent()
+
+def parse_args(args: list[str]) -> Config:
+    """Parse arguments."""
+    parser = argparse.ArgumentParser(prog="npr_podcast_downloader", description="Downloads NPR podcasts.")
+    parser.add_argument("-p", "--proxy", type=str, default=None, help="Proxy URL", required=False, dest="proxy")
+    parser.add_argument("-u", "--user-agent", type=str, default=None, help="User agent to use", required=False, dest="user_agent")
+    parser.add_argument("urls", type=str, nargs="*", help="Podcast URL")
+    parsed = parser.parse_args(args[1:])
+    return Config(
+        proxy=parsed.proxy,
+        # TODO: Change this after coding for combining feeds
+        url=parsed.urls[0] if len(parsed.urls) == 1 else BASE_URL,
+        user_agent=parsed.user_agent if parsed.user_agent is not None else get_user_agent()
+    )
 
 def get_feed(url: str, sess: requests.Session) -> Document:
     """Download and parse the feed."""
@@ -191,14 +229,6 @@ def enrich_article(article: Element, media: str|None, body: bs4.BeautifulSoup, d
             syslog.syslog(syslog.LOG_DEBUG, f"The media link is not to an mp3: {media}")
         article.appendChild(enclosure)
     # TODO: Append the text somehow?
-
-def get_user_agent() -> str:
-    """Get the user agent to use."""
-    if (env := getenv("RSS_USER_AGENT")) is not None:
-        return env
-    if (env := getenv("USER_AGENT")) is not None:
-        return env
-    return DEFAULT_USER_AGENT
 
 def enrich_articles(feed: Document|Element, sess: requests.Session, doc: Document, max_workers: int = 3):
     """Get the article body and (if possible) media URL for each element.

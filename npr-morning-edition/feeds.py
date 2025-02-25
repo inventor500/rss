@@ -1,98 +1,43 @@
 #! /usr/bin/python3
 
 """
-NPR does not put the URL of the audio in the RSS feed.
-
-Usage:
-python npr_podcast_downloader.py [--proxy <proxy>] [url]
-
-Requirements:
-Depends on the requests and beautiful soup 4 libraries.
-Depends on lxml (for use by beautiful soup).
-Requires a UNIX-like system due to use of Python's syslog library.
-Due to the use of the "walrus operator" (:=), this requires at least Python 3.8.
-Code has only been tested on Python 3.13 (as of Feb. 2025).
+Work with feeds.
 """
 
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from datetime import datetime
-from os import getenv
-from sys import stderr, exit, argv
-from traceback import extract_tb
-from xml.dom.minidom import parseString, Document, Element
-import argparse
+from typing import Iterable
+from xml.dom.minidom import Document, Element,  parseString
 import re
 import syslog
+
 import bs4
 import requests
 
-BASE_URL: str = "https://feeds.npr.org/3/rss.xml" # Morning Edition
-DEFAULT_USER_AGENT: str = "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
 
-def main(args: list[str]) -> None:
-    """The main function."""
-    syslog.openlog(ident="NprPodcastDownloader", facility=syslog.LOG_NEWS)
-    try:
-        with requests.Session() as session:
-            conf = parse_args(args)
-            # Set the default headers
-            session.headers.update({
-                "User-Agent": conf.user_agent,
-                "Referer": "https://www.npr.org",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Sec-GPC": "1",
-            })
-            # Set the proxy
-            if conf.proxy is not None:
-                session.proxies.update({
-                    "http": conf.proxy,
-                    "https": conf.proxy,
-                })
-            # Download and convert the feed
-            feed = convert_feed(get_feed(conf.url, session))
-            enrich_articles(feed, session, feed)
-            print(feed.toprettyxml())
-    except BaseException as err:
-        print(f"Unable to download: {err}", file=stderr)
-        syslog.syslog(
-            syslog.LOG_ERR,
-            f"Unable to download: {err}\n{'\n'.join(extract_tb(err.__traceback__).format())}",
-        )
-        exit(1)
+def process_feeds(urls: list[str], sess: requests.Session) -> Document:
+    """Download and combine the feeds."""
+    main: Document = convert_feed(get_feed(urls[0], sess))
+    if len(urls) == 1: # No need to combine
+        enrich_articles(main, sess, main)
+        return main
+    # This is done in serial
+    feeds: Iterable[Document] = (get_feed(url, sess) for url in urls[1:])
+    for feed in feeds:
+        join_feeds(main, feed)
+    sort_elements(main)
+    enrich_articles(main, sess, main)
+    return main
 
-
-def get_user_agent() -> str:
-    """Get the user agent to use."""
-    if (env := getenv("RSS_USER_AGENT")) is not None:
-        return env
-    if (env := getenv("USER_AGENT")) is not None:
-        return env
-    return DEFAULT_USER_AGENT
-
-@dataclass
-class Config:
-    proxy: str|None = None
-    url: str = BASE_URL
-    user_agent: str = get_user_agent()
-
-def parse_args(args: list[str]) -> Config:
-    """Parse arguments."""
-    parser = argparse.ArgumentParser(prog="npr_podcast_downloader", description="Downloads NPR podcasts.")
-    parser.add_argument("-p", "--proxy", type=str, default=None, help="Proxy URL", required=False, dest="proxy")
-    parser.add_argument("-u", "--user-agent", type=str, default=None, help="User agent to use", required=False, dest="user_agent")
-    parser.add_argument("urls", type=str, nargs="*", help="Podcast URL")
-    parsed = parser.parse_args(args[1:])
-    return Config(
-        proxy=parsed.proxy,
-        # TODO: Change this after coding for combining feeds
-        url=parsed.urls[0] if len(parsed.urls) == 1 else BASE_URL,
-        user_agent=parsed.user_agent if parsed.user_agent is not None else get_user_agent()
-    )
+def join_feeds(main: Document, new: Document) -> None:
+    """Join the feeds together. Modified the main feed in-place."""
+    # Atom uses "<feed>", RSS uses "<rss>"
+    is_atom: bool = new.documentElement.tagName == "feed"
+    main_doc = main.documentElement
+    for article in new.documentElement.getElementsByTagName("entry" if is_atom else "item"):
+        a = article if is_atom else convert_element(article, new) # Make sure this is Atom
+        main.importNode(a, deep=True)
+        main_doc.appendChild(a)
 
 def get_feed(url: str, sess: requests.Session) -> Document:
     """Download and parse the feed."""
@@ -104,6 +49,7 @@ def get_feed(url: str, sess: requests.Session) -> Document:
         raise RuntimeError(f"Unable to download feed: {err}") from err
     except BaseException as err:
         raise RuntimeError(f"Unable to parse feed: {err}") from err
+
 
 def convert_feed(feed: Document) -> Document:
     """Convert the feed from an RSS feed to an Atom feed."""
@@ -138,6 +84,21 @@ def convert_feed(feed: Document) -> Document:
     for element in feed.getElementsByTagName("item"):
         root.appendChild(convert_element(element, doc))
     return doc
+
+def sort_elements(feed: Document) -> None:
+    """Sort the <entry> elements by date/time.
+    Modification is done in-place.
+    """
+    def get_date(e: Element) -> datetime:
+        updated: list[Element] = e.getElementsByTagName("updated")
+        if len(updated) != 1:
+            raise RuntimeError("Invalid number of updated tags")
+        return " ".join(node.nodeValue for node in updated[0].childNodes if node.nodeType == node.TEXT_NODE)
+    elements: list[Element] = feed.documentElement.getElementsByTagName("entry")
+    for element in elements:
+        feed.documentElement.removeChild(element)
+    for element in sorted(elements, key=get_date):
+        feed.documentElement.appendChild(element)
 
 def convert_element(original: Element, doc: Document) -> Element:
     """Convert an RSS item from RSS to an Atom entry."""
@@ -246,6 +207,3 @@ def enrich_articles(feed: Document|Element, sess: requests.Session, doc: Documen
         # The Python documentation does not mention minidom being thread-safe,
         # so update this in serial
         enrich_article(entry, media_url, body, doc)
-
-if __name__ == "__main__":
-    main(argv)

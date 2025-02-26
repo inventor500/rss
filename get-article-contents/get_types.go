@@ -196,9 +196,7 @@ func createItem(item *feed.Item, doc *etree.Document) *etree.Element {
 	}
 	// This one is why this whole program exists
 	if item.Content != "" {
-		element := createTextElement("content", item.Content, doc)
-		element.CreateAttr("type", "html")
-		root.AddChild(element)
+		root.AddChild(makeContent(item.Content, doc))
 	} else {
 		// Link could be empty here, but probably won't be
 		log.Printf("Article '%s' has no content", item.Link)
@@ -212,6 +210,24 @@ func createItem(item *feed.Item, doc *etree.Document) *etree.Element {
 	}
 	// TODO: Add other elements?
 	return root
+}
+
+func makeContent(html string, doc *etree.Document) *etree.Element {
+	if xmlString, err := convertToXML(html); err == nil {
+		if xml, err := parseXML(xmlString); err == nil {
+			element := doc.CreateElement("content")
+			element.CreateAttr("type", "xhtml")
+			element.AddChild(xml)
+			return element
+		} else {
+			log.Printf("Failed to convert string to XML, using HTML instead: %s", err)
+		}
+	} else {
+		log.Printf("Failed to convert to XML, using HTML instead: %s", err)
+	}
+	element := createTextElement("content", html, doc)
+	element.CreateAttr("type", "html")
+	return element
 }
 
 func parseXML(xml string) (*etree.Element, error) {

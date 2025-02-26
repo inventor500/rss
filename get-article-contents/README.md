@@ -17,3 +17,7 @@ Usage: `get-article-contents [options] <url>`
 **Notes**:
 * If `--url` is provided, the final `<url>` parameter is optional and will be ignored if provided.
 * `--selector` is used to select a portion of a page. For example, if set to `article` (the default), then elements of the `article` type will be included in the RSS feed.
+
+## Compilation
+
+- Now depends on `libtidy` for converting articles between HTML and XHTML. This is a CGO dependency.

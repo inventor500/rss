@@ -310,6 +310,7 @@ func getPage(id int, url, selector, userAgent string, client *http.Client) *resu
 		res.Err = err
 		return &res
 	}
+	doc.Find("script").Remove()
 	selection := doc.Find(selector)
 	if selection.Size() > 0 {
 		res.Content = selection

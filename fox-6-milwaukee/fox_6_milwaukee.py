@@ -85,6 +85,9 @@ def remove_signup_links(article: Tag) -> None:
     for ad in article.find_all("a", attrs={"href": "https://www.fox6now.com/newsletters"}):
         if ad is not None and ad.parent is not None:
             ad.parent.decompose()
+    for ad in article.find_all("a", href=lambda x: x.startswith("https://foxlocal.onelink.me/")):
+        if ad is not None and ad.parent is not None:
+            ad.parent.decompose()
 
 def get_article(
         entry: Element,
@@ -98,25 +101,22 @@ def get_article(
         res = sess.get(link)
         res.raise_for_status()
         article = BeautifulSoup(res.text, "lxml")
-        content = article.find(class_="article-content")
-        if content is not None: # Article has content
-            assert isinstance(content, Tag)
-            cleanup_html(content)
-            remove_signup_links(content)
-            return entry, (content, None)
-        else: # Video?
-            video = article.find(class_="script", attrs={"type": "application/ld+json"})
-            if video is None: # No video
-                return entry
-            assert isinstance(content, Tag)
-            js: dict[str, str|dict] = json.parse(video.get_text())
+        content = None
+        video = None
+        _c = article.find(class_="article-content")
+        if isinstance(_c, Tag): # Article has content
+            cleanup_html(_c)
+            remove_signup_links(_c)
+            content = _c
+        _v = article.find("script", attrs={"type": "application/ld+json"})
+        if isinstance(_v, Tag): # Article has a video
+            js: dict[str, str|dict] = json.loads(_v.get_text())
             if "contentUrl" not in js or not isinstance(js["contentUrl"], str):
                 Logger.info("Could not extract video URL from metadata element")
                 return entry
             url = js["contentUrl"]
-            # TODO: Do any of these have article contents?
-            # If not, then the touple return type is useless
-            return entry, (None, url)
+            video = url
+        return entry, (content, video)
     except BaseException as err:
         Logger.error("Unable to fetch article: %s", err)
         return entry

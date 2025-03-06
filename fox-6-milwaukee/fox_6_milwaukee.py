@@ -91,7 +91,7 @@ def remove_signup_links(article: Tag) -> None:
 
 def get_article(
         entry: Element,
-        sess: Session
+        sess: Session,
 ) -> tuple[Element, tuple[Tag|None, str|None]]|Element:
     """Get the article contents. Returns (received_entry, (article_body, video_url))|received_entry.
     Intended to be called by enrich_articles in concert with update_article.

@@ -18,34 +18,21 @@ from sys import argv, stderr, exit
 from traceback import extract_tb
 import syslog
 
-from requests import Session
-
 from .config import Config, parse_args
 from .feeds import process_feeds
+
+from python_feed_lib import with_session
 
 def main(args: list[str]) -> None:
     """The main function."""
     syslog.openlog(ident="NprPodcastDownloader", facility=syslog.LOG_NEWS)
     try:
-        with Session() as session:
-            conf: Config = parse_args(args)
-            # Set the default headers
-            session.headers.update({
-                "User-Agent": conf.user_agent,
-                "Referer": "https://www.npr.org",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Sec-GPC": "1",
-            })
-            # Set the proxy
-            if conf.proxy is not None:
-                session.proxies.update({
-                    "http": conf.proxy,
-                    "https": conf.proxy,
-                })
+        conf: Config = parse_args(args)
+        with with_session(
+                referer="https://www.npr.org",
+                user_agent=conf.user_agent,
+                proxy=conf.proxy,
+        ) as session:
             # Download and convert the feed
             feed = process_feeds(conf.urls, session)
             print(feed.toprettyxml())

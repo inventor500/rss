@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
 from os import getenv
-from typing import Any, Callable
+from typing import Callable
 from xml.dom.minidom import Document, Element, parseString
 import logging
 

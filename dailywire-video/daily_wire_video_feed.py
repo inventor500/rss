@@ -62,6 +62,7 @@ def main(args: list[str]) -> None:
     except RuntimeError as err:
         syslog.syslog(f"Unable to download: {err}\n{'\n'.join(extract_tb(err.__traceback__).format())}")
         print(f"Unable to download: {err}", file=stderr)
+        exit(1)
 
 
 ## XML/Feed Functions
@@ -210,17 +211,14 @@ def get_video_url(article: VideoElement, buildid: str) -> str:
         js = res.json()
     except json.JSONDecodeError as err:
         raise RuntimeError(f"Failed to decode episode JSON data: {err}") from err
-    if "pageProps" not in js or "episodeData" not in (cmap := js["pageProps"]) \
-       or "episode" not in (cmap := cmap["episodeData"]) \
-       or "segments" not in (cmap := cmap["episode"]) \
-       or not isinstance(cmap := cmap["segments"], list) \
-       or len(cmap) < 1 \
-       or "video" not in (cmap := cmap[0]):
+    if "pageProps" not in js \
+       or "v4EpisodeData" not in (cmap := js["pageProps"]) \
+       or "videoURL" not in (cmap := cmap["v4EpisodeData"]):
         raise RuntimeError("Unable to extract video url from episode data")
     # TODO: This link is not stable, the token eventually expires
-    assert isinstance(cmap["video"], str)
-    assert len(cmap["video"]) > 0
-    return cmap["video"]
+    assert isinstance(cmap["videoURL"], str)
+    assert cmap["videoURL"].startswith("http")
+    return cmap["videoURL"]
 
 def root_url(series_name: str) -> str:
     """Convert a series name into a url."""
@@ -288,6 +286,7 @@ def get_videos(series_name: str) -> list[VideoElement]:
                 return None
         except RuntimeError as err:
             syslog.syslog(syslog.LOG_INFO, str(err))
+            return None
         return parsed
     with ThreadPoolExecutor(max_workers=3) as exec:
         results = [exec.submit(process_video, item) for item in js["componentItems"]]

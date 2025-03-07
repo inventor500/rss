@@ -101,5 +101,5 @@ def enrich_article(entry: Element, contents: tuple[bs4.Tag|None, str|None], doc:
             enclosure.setAttribute("type", "audio/mpeg")
         else:
             syslog.syslog(syslog.LOG_DEBUG, f"The media link is not an mp3: {media}")
-        entry.appendChild(entry)
+        entry.appendChild(enclosure)
     # TODO: Append the text?

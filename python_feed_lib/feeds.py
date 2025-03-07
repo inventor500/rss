@@ -34,12 +34,8 @@ def with_session(referer: str|None = None, user_agent: str|None = None, proxy: s
                 "Sec-Fetch-Site": "none",
                 "Sec-Fetch-User": "?1",
                 "Sec-GPC": "1", # Enable GPC
+                "User-Agent": user_agent if user_agent is not None else DEFAULT_USER_AGENT
             })
-            # Set the default user agent
-            if user_agent is not None:
-                sess.headers.update({
-                    "User-Agent": user_agent,
-                })
             # Set the referer string
             if referer is not None:
                 sess.headers.update({

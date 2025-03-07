@@ -85,7 +85,7 @@ def remove_signup_links(article: Tag) -> None:
     for ad in article.find_all("a", attrs={"href": "https://www.fox6now.com/newsletters"}):
         if ad is not None and ad.parent is not None:
             ad.parent.decompose()
-    for ad in article.find_all("a", href=lambda x: x.startswith("https://foxlocal.onelink.me/")):
+    for ad in article.find_all("a", href=lambda x: isinstance(x, str) and x.startswith("https://foxlocal.onelink.me/")):
         if ad is not None and ad.parent is not None:
             ad.parent.decompose()
 
@@ -111,11 +111,13 @@ def get_article(
         _v = article.find("script", attrs={"type": "application/ld+json"})
         if isinstance(_v, Tag): # Article has a video
             js: dict[str, str|dict] = json.loads(_v.get_text())
-            if "contentUrl" not in js or not isinstance(js["contentUrl"], str):
+            if ("contentUrl" not in js or not isinstance(js["contentUrl"], str)):
                 Logger.info("Could not extract video URL from metadata element")
-                return entry
-            url = js["contentUrl"]
-            video = url
+                if content is None:
+                    return entry
+                return entry, (content, video)
+            video = js["contentUrl"]
+        assert video is None or isinstance(video, str)
         return entry, (content, video)
     except BaseException as err:
         Logger.error("Unable to fetch article: %s", err)

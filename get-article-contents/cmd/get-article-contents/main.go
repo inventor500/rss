@@ -22,14 +22,11 @@ func main() {
 }
 
 func mainFunc() error {
-	conf, err := parseArgs()
-	if err != nil {
-		return err
-	}
+	conf := parseArgs()
 	if err := setHttpDefaults(conf.Proxy, conf.Timeout); err != nil {
 		return err
 	}
-	if err = initLog(); err != nil {
+	if err := initLog(); err != nil {
 		return err
 	}
 	client := http.Client{}
@@ -37,6 +34,10 @@ func mainFunc() error {
 	feed, err := getter.GetFeed(conf, &client)
 	if err != nil {
 		return err
+	}
+	// Remove old items from the feed
+	if conf.MaxDaysBack != 0 {
+		getter.TruncateFeed(feed, conf.MaxDaysBack)
 	}
 	err = getter.EnrichFeed(feed, conf, &client)
 	if err != nil {
@@ -47,14 +48,14 @@ func mainFunc() error {
 }
 
 // Parse arguments
-func parseArgs() (*getter.Config, error) {
-	// TODO: Proxy support
+func parseArgs() *getter.Config {
 	var conf getter.Config
 	flag.StringVar(&conf.RemoteUrl, "url", "", "The url to fetch the feed from. Will also attempt to read from the final command line argument received.")
 	flag.StringVar(&conf.CssSelector, "selector", "article", "The CSS selector to use when extractoring articles")
 	flag.DurationVar(&conf.Timeout, "timeout", 10*time.Second, "Duration for which to wait for each individual feed.")
 	flag.StringVar(&conf.UserAgent, "user-agent", "", fmt.Sprintf("User agent. If not specified, will read from, in order, the RSS_USER_AGENT and USER_AGENT environment variables. If neither of those is specified, will use the default user agent (%s).", DefaultUserAgent))
 	flag.StringVar(&conf.Proxy, "proxy", "", "Proxy URL to use for HTTP requests, e.g. socks5h://localhost:8090")
+	flag.IntVar(&conf.MaxDaysBack, "max-days-back", 15, "How far in the past an article can be before it is ignored, in days. 0 disables this functionality.")
 	flag.Parse()
 	if conf.RemoteUrl == "" {
 		if len(flag.Args()) == 1 {
@@ -65,6 +66,11 @@ func parseArgs() (*getter.Config, error) {
 			os.Exit(1)
 		}
 	}
+	if conf.MaxDaysBack < 0 {
+		fmt.Fprintf(os.Stderr, "Days must be a positive integer, or 0")
+		flag.Usage()
+		os.Exit(1)
+	}
 	if conf.UserAgent == "" {
 		conf.UserAgent = os.Getenv("RSS_USER_AGENT")
 	}
@@ -74,7 +80,7 @@ func parseArgs() (*getter.Config, error) {
 	if conf.UserAgent == "" {
 		conf.UserAgent = DefaultUserAgent
 	}
-	return &conf, nil
+	return &conf
 }
 
 func setHttpDefaults(proxyUrl string, timeout time.Duration) error {

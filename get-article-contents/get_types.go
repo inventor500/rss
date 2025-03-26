@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ type Config struct {
 	UserAgent   string
 	Timeout     time.Duration
 	Proxy       string
+	MaxDaysBack int
 }
 
 func GetFeed(conf *Config, client *http.Client) (*feed.Feed, error) {
@@ -157,6 +159,21 @@ func MakeFeed(feed *feed.Feed) string {
 	}
 	str, _ := doc.WriteToString()
 	return str
+}
+
+// Remove items from the feed from before daysBack
+func TruncateFeed(f *feed.Feed, daysBack int) {
+	duration := time.Duration(daysBack) * 24 * -time.Hour
+	minTime := time.Now().Add(duration)
+	f.Items = slices.DeleteFunc(f.Items, func(item *feed.Item) bool {
+		if item == nil {
+			return true
+		}
+		if item.UpdatedParsed != nil {
+			return item.UpdatedParsed.Before(minTime)
+		}
+		return false // Unable to parse, no idea if this is before or after
+	})
 }
 
 func createItem(item *feed.Item, doc *etree.Document) *etree.Element {

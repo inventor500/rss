@@ -194,7 +194,11 @@ def create_video(element: dict[str, Any]) -> VideoElement|None:
 
 ## Download Functions
 
-def get_video_url(article: VideoElement, buildid: str, session: req.Session) -> str:
+def get_video_url(
+        article: VideoElement,
+        buildid: str,
+        session: req.Session,
+) -> str|None:
     """Get the URL of the video corresponding to the element.
     Raises a RuntimeError if unable to get the video URL.
     """
@@ -213,8 +217,12 @@ def get_video_url(article: VideoElement, buildid: str, session: req.Session) -> 
        or "videoURL" not in (cmap := cmap["v4EpisodeData"]):
         raise RuntimeError("Unable to extract video url from episode data")
     # TODO: This link is not stable, the token eventually expires
-    assert isinstance(cmap["videoURL"], str)
-    assert cmap["videoURL"].startswith("http")
+    if not isinstance(cmap["videoURL"], str) or not cmap["videoURL"].startswith("http"):
+        syslog.syslog(
+            "Video URL is not valid: "
+            f"recieved {cmap['videoURL']} (type {type(cmap['videoURL'])})",
+        )
+        return None
     return cmap["videoURL"]
 
 def root_url(series_name: str) -> str:
@@ -266,7 +274,7 @@ def get_videos(series_name: str, session: req.Session) -> list[VideoElement]:
             return None
         try:
             parsed.video_url = get_video_url(parsed, build_id, session)
-            if parsed.video_url.lower() == "access denied":
+            if parsed.video_url is None or parsed.video_url.lower() == "access denied":
                 return None
         except RuntimeError as err:
             syslog.syslog(syslog.LOG_INFO, str(err))

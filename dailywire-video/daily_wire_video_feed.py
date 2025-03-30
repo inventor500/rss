@@ -58,12 +58,18 @@ def main(args: list[str]) -> None:
     syslog.openlog(ident="DailyWireVideo", facility=syslog.LOG_NEWS)
     atexit(syslog.closelog)
     try:
-        with with_session(referer="https://www.dailywire.com", user_agent=get_user_agent()) as session:
+        with with_session(
+                referer="https://www.dailywire.com",
+                user_agent=get_user_agent(),
+        ) as session:
             videos = get_videos(args[1], session)
         feed = create_feed(args[1], videos)
         print(feed.toxml())
     except RuntimeError as err:
-        syslog.syslog(f"Unable to download: {err}\n{'\n'.join(extract_tb(err.__traceback__).format())}")
+        syslog.syslog(
+            f"Unable to download: {err}\n"
+            f"{'\n'.join(extract_tb(err.__traceback__).format())}",
+        )
         print(f"Unable to download: {err}", file=stderr)
         exit(1)
 
@@ -109,7 +115,9 @@ class VideoElement:
         entry.appendChild(create_text_node("id", escape(_id), doc))
         entry.appendChild(create_text_node("updated", self.published, doc))
         if self.description is not None:
-            entry.appendChild(create_text_node("summary", escape(self.description), doc))
+            entry.appendChild(
+                create_text_node("summary", escape(self.description), doc),
+            )
         if self.video_url is not None:
             download_link = create_link_element("link", escape(self.video_url), doc)
             download_link.setAttribute("rel", "enclosure")
@@ -126,7 +134,7 @@ class VideoElement:
 def create_feed(title: str, videos: list[VideoElement]) -> Document:
     """Create a feed."""
     doc: Document = parseXML("""<?xml version="1.0" encoding="utf-8"?>
-    <feed xmlns="http://www.w3.org/2005/Atom"></feed>""")
+    <feed xmlns="http://www.w3.org/2005/Atom"></feed>""") # noqa: S318
     root = doc.documentElement
     root.appendChild(create_text_node("title", title, doc))
     root.appendChild(create_text_node("id", root_url(title), doc))
@@ -137,17 +145,27 @@ def create_feed(title: str, videos: list[VideoElement]) -> Document:
     ))
     root.appendChild(create_text_node("generator", argv[0], doc))
     root.appendChild(
-        create_text_node("icon", "https://www.dailywire.com/favicons/apple-touch-icon-57x57.png", doc)
+        create_text_node(
+            "icon",
+            "https://www.dailywire.com/favicons/apple-touch-icon-57x57.png",
+            doc,
+        )
     )
     for video in videos:
         root.appendChild(video.to_xml(doc))
     return doc
 
-def create_link_element(tag: str, href: str, doc: Document, text: str|None = None) -> Element:
+def create_link_element(
+        tag: str,
+        href: str,
+        doc: Document,
+        text: str|None = None,
+) -> Element:
     """Create a link.
     If text is not provided, then no text element will be created.
     """
-    element = doc.createElement(tag) if text is None else create_text_node(tag, text, doc)
+    element = doc.createElement(tag) if text is None \
+        else create_text_node(tag, text, doc)
     element.setAttribute("href", href)
     return element
 
@@ -156,7 +174,10 @@ def create_video(element: dict[str, Any]) -> VideoElement|None:
     Returns None if unable to parse.
     """
     if "showEpisode" not in element:
-        syslog.syslog(syslog.LOG_INFO, "showEpisode is missing from episode description")
+        syslog.syslog(
+            syslog.LOG_INFO,
+            "showEpisode is missing from episode description",
+        )
         return None
     episode: dict[str, Any] = element["showEpisode"]
     slug: str|None = None
@@ -202,11 +223,19 @@ def get_video_url(
     """Get the URL of the video corresponding to the element.
     Raises a RuntimeError if unable to get the video URL.
     """
-    assert article.slug is not None
-    url = path.join("https://www.dailywire.com/_next/data/", buildid, f"episode/{article.slug}.json")
+    if article.slug is None:
+        return None
+    url = path.join(
+        "https://www.dailywire.com/_next/data/",
+        buildid,
+        f"episode/{article.slug}.json",
+    )
     res = session.get(url)
     if res.status_code != 200:
-        raise RuntimeError(f"Unable to download episode data: received status code {res.status_code}")
+        raise RuntimeError(
+            "Unable to download episode data: "
+            f"received status code {res.status_code}"
+        )
     js: dict[str, Any] = {}
     try:
         js = res.json()
@@ -242,7 +271,9 @@ def get_build_id(show_url: str, session: req.Session) -> str:
     """Get the build id."""
     res = session.get(show_url)
     if res.status_code != 200:
-        raise RuntimeError(f"Unable to get the build id: Received status code {res.status_code}")
+        raise RuntimeError(
+            f"Unable to get the build id: Received status code {res.status_code}",
+        )
     getter = re.compile(r'"buildId": ?"(.*?)"')
     _match = getter.search(res.text)
     if _match is None or len(_match.groups()) < 1:
@@ -255,9 +286,14 @@ def get_videos(series_name: str, session: req.Session) -> list[VideoElement]:
         "slug": series_name.replace(' ', '-').lower(),
         "membershipPlan": None
     }
-    res = session.get("https://middleware-prod.dailywire.com/middleware/v4/getShowEpisodesWeb", params=params)
+    res = session.get(
+        "https://middleware-prod.dailywire.com/middleware/v4/getShowEpisodesWeb",
+        params=params,
+    )
     if res.status_code != 200:
-        raise RuntimeError(f"Unable to download episode list: Received code {res.status_code}")
+        raise RuntimeError(
+            f"Unable to download episode list: Received code {res.status_code}",
+        )
     try:
         js = res.json()
     except json.JSONDecodeError as err:
